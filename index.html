@@ -1,0 +1,951 @@
+<style>
+  #fishos-root {
+    --teal-950: #0E2B2E;
+    --teal-800: #164E52;
+    --teal-600: #1F7A80;
+    --teal-500: #2C9AA0;
+    --cream: #F5F1E8;
+    --cream-card: #FFFFFF;
+    --ink: #17221F;
+    --ink-soft: #4B5A56;
+    --amber: #D98E2B;
+    --amber-bg: #FBEDD5;
+    --red: #C1443C;
+    --red-bg: #F9E1DF;
+    --green: #3E7A52;
+    --green-bg: #E3F0E5;
+    --line: #DCD5C4;
+    font-family: 'IBM Plex Sans', 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    background: var(--cream);
+    color: var(--ink);
+    min-height: 100%;
+    box-sizing: border-box;
+    -webkit-tap-highlight-color: transparent;
+  }
+  #fishos-root * { box-sizing: border-box; }
+  #fishos-root .mono {
+    font-family: 'IBM Plex Mono', 'SF Mono', Consolas, monospace;
+    letter-spacing: 0.01em;
+  }
+  #fishos-root button { font-family: inherit; cursor: pointer; }
+  #fishos-root input, #fishos-root select {
+    font-family: inherit;
+    font-size: 16px;
+  }
+
+  /* ---- shell ---- */
+  .fo-shell { max-width: 480px; margin: 0 auto; min-height: 100vh; background: var(--cream); display: flex; flex-direction: column; }
+  .fo-header {
+    background: var(--teal-950); color: var(--cream); padding: 18px 18px 14px;
+    display: flex; align-items: center; justify-content: space-between;
+    position: sticky; top: 0; z-index: 20;
+  }
+  .fo-header .fo-title { font-size: 19px; font-weight: 700; letter-spacing: 0.01em; }
+  .fo-header .fo-sub { font-size: 12px; color: #9FC4C6; margin-top: 2px; }
+  .fo-role-toggle { display: flex; background: rgba(255,255,255,0.08); border-radius: 8px; padding: 3px; }
+  .fo-role-toggle button {
+    border: none; background: transparent; color: #9FC4C6; font-size: 12.5px; font-weight: 600;
+    padding: 7px 12px; border-radius: 6px; transition: all 0.15s;
+  }
+  .fo-role-toggle button.active { background: var(--teal-500); color: white; }
+
+  .fo-body { flex: 1; padding: 16px; padding-bottom: 40px; }
+
+  /* ---- worker home grid ---- */
+  .fo-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 6px; }
+  .fo-tile {
+    background: var(--cream-card); border: 1px solid var(--line); border-radius: 10px;
+    padding: 16px 14px; text-align: left; display: flex; flex-direction: column; gap: 6px;
+    min-height: 96px; position: relative; box-shadow: 0 1px 0 rgba(23,34,31,0.04);
+  }
+  .fo-tile:active { transform: scale(0.98); background: #FBF9F3; }
+  .fo-tile .fo-tile-num { font-size: 11px; color: var(--teal-600); font-weight: 700; }
+  .fo-tile .fo-tile-verb { font-size: 17px; font-weight: 700; color: var(--ink); }
+  .fo-tile .fo-tile-meta { font-size: 12px; color: var(--ink-soft); margin-top: auto; }
+  .fo-tile .fo-badge {
+    position: absolute; top: 12px; right: 12px; width: 9px; height: 9px; border-radius: 50%;
+  }
+  .fo-tile .fo-badge.red { background: var(--red); }
+  .fo-tile .fo-badge.amber { background: var(--amber); }
+
+  .fo-section-label { font-size: 12.5px; font-weight: 700; color: var(--teal-600); text-transform: uppercase; letter-spacing: 0.06em; margin: 22px 0 8px; }
+  .fo-section-label:first-child { margin-top: 0; }
+
+  /* ---- flow screen ---- */
+  .fo-flow-header { display: flex; align-items: center; gap: 10px; margin-bottom: 4px; }
+  .fo-back { background: none; border: none; color: var(--teal-600); font-size: 22px; padding: 4px 8px 4px 0; line-height: 1; }
+  .fo-flow-title { font-size: 20px; font-weight: 700; }
+
+  .fo-step {
+    background: var(--cream-card); border: 1px solid var(--line); border-radius: 12px;
+    padding: 16px; margin-top: 14px;
+  }
+  .fo-step-label { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; }
+  .fo-step-num {
+    width: 22px; height: 22px; border-radius: 50%; background: var(--teal-800); color: white;
+    font-size: 12px; font-weight: 700; display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+  }
+  .fo-step-name { font-size: 13px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: var(--ink); }
+  .fo-step-hint { font-size: 13.5px; color: var(--ink-soft); line-height: 1.5; margin-top: -4px; margin-bottom: 10px; }
+
+  .fo-scan-search {
+    width: 100%; padding: 11px 12px; border: 1px solid var(--line); border-radius: 8px; font-size: 15px;
+    margin-bottom: 10px; background: var(--cream);
+  }
+  .fo-scan-list { display: flex; flex-direction: column; gap: 6px; max-height: 260px; overflow-y: auto; }
+  .fo-scan-item {
+    display: flex; justify-content: space-between; align-items: center; width: 100%;
+    padding: 11px 12px; border: 1.5px solid var(--line); border-radius: 8px; background: white; text-align: left;
+  }
+  .fo-scan-item.selected { border-color: var(--teal-600); background: #EAF4F3; }
+  .fo-scan-item .fo-scan-id { font-size: 14.5px; font-weight: 700; }
+  .fo-scan-item .fo-scan-detail { font-size: 12px; color: var(--ink-soft); margin-top: 2px; }
+  .fo-scan-item .fo-scan-status { font-size: 10.5px; font-weight: 700; padding: 3px 7px; border-radius: 5px; text-transform: uppercase; }
+
+  .fo-field { margin-bottom: 12px; }
+  .fo-field label { display: block; font-size: 12.5px; font-weight: 600; color: var(--ink-soft); margin-bottom: 5px; }
+  .fo-field input, .fo-field select {
+    width: 100%; padding: 11px 12px; border: 1px solid var(--line); border-radius: 8px; background: var(--cream);
+  }
+  .fo-field-row { display: flex; gap: 10px; }
+  .fo-field-row .fo-field { flex: 1; }
+
+  .fo-submit {
+    width: 100%; padding: 15px; border: none; border-radius: 9px; background: var(--teal-600); color: white;
+    font-size: 15.5px; font-weight: 700; margin-top: 4px; letter-spacing: 0.01em;
+  }
+  .fo-submit:disabled { background: #C7C0AE; }
+  .fo-submit.danger { background: var(--red); }
+
+  .fo-result { text-align: center; padding: 30px 16px; }
+  .fo-result-icon { font-size: 40px; margin-bottom: 10px; }
+  .fo-result-title { font-size: 18px; font-weight: 700; margin-bottom: 6px; }
+  .fo-result-detail { font-size: 13.5px; color: var(--ink-soft); line-height: 1.5; }
+  .fo-result-detail .warn { color: var(--red); font-weight: 700; }
+  .fo-result button { margin-top: 22px; }
+
+  .fo-pill { display: inline-block; font-size: 10.5px; font-weight: 700; padding: 3px 8px; border-radius: 5px; text-transform: uppercase; letter-spacing: 0.02em; }
+  .fo-pill.ok { background: var(--green-bg); color: var(--green); }
+  .fo-pill.amber { background: var(--amber-bg); color: var(--amber); }
+  .fo-pill.red { background: var(--red-bg); color: var(--red); }
+  .fo-pill.neutral { background: #EDE9DC; color: var(--ink-soft); }
+
+  /* ---- manager view ---- */
+  .fo-mgr-date { font-size: 13px; color: var(--ink-soft); margin-bottom: 14px; }
+  .fo-check-row {
+    display: flex; align-items: center; gap: 10px; padding: 12px 0; border-bottom: 1px solid var(--line);
+  }
+  .fo-check-row:last-child { border-bottom: none; }
+  .fo-check-icon { font-size: 16px; width: 20px; text-align: center; flex-shrink: 0; }
+  .fo-check-text { font-size: 14.5px; flex: 1; }
+  .fo-check-text .fo-count { color: var(--ink-soft); font-size: 12.5px; }
+
+  .fo-exception-card {
+    background: white; border: 1px solid var(--line); border-left: 4px solid var(--amber); border-radius: 8px;
+    padding: 12px 14px; margin-bottom: 8px;
+  }
+  .fo-exception-card.red { border-left-color: var(--red); }
+  .fo-exception-title { font-size: 14px; font-weight: 700; }
+  .fo-exception-detail { font-size: 12.5px; color: var(--ink-soft); margin-top: 3px; }
+
+  .fo-empty { text-align: center; padding: 24px; color: var(--ink-soft); font-size: 13.5px; }
+
+  .fo-tank-table { width: 100%; border-collapse: collapse; margin-top: 4px; }
+  .fo-tank-table th { text-align: left; font-size: 10.5px; text-transform: uppercase; color: var(--ink-soft); padding: 6px 8px; border-bottom: 1px solid var(--line); }
+  .fo-tank-table td { padding: 9px 8px; font-size: 13px; border-bottom: 1px solid var(--line); }
+  .fo-tank-table tr:last-child td { border-bottom: none; }
+
+  .fo-loading { text-align: center; padding: 60px 20px; color: var(--ink-soft); }
+</style>
+
+<div id="fishos-root">
+  <div class="fo-shell">
+    <div class="fo-header">
+      <div>
+        <div class="fo-title">Ngapori FISH OS</div>
+        <div class="fo-sub" id="fo-header-sub">Loading…</div>
+      </div>
+      <div class="fo-role-toggle">
+        <button id="fo-role-worker" class="active">Worker</button>
+        <button id="fo-role-manager">Manager</button>
+      </div>
+    </div>
+    <div class="fo-body" id="fo-body">
+      <div class="fo-loading">Loading facility data…</div>
+    </div>
+  </div>
+</div>
+
+<script>
+(function(){
+
+// ---------------------------------------------------------------------
+// CONSTANTS
+// ---------------------------------------------------------------------
+const STAGE_BANDS = {
+  Tilapia: [
+    { stage: 'Fingerling', min: 0,     max: 0.11 },
+    { stage: 'Juvenile',   min: 0.11,  max: 0.55 },
+    { stage: 'Grow-Out',   min: 0.55,  max: 2.0  },
+    { stage: 'Harvest Ready', min: 2.0, max: Infinity },
+  ],
+  Catfish: [
+    { stage: 'Fingerling', min: 0,     max: 0.165 },
+    { stage: 'Juvenile',   min: 0.165, max: 0.99  },
+    { stage: 'Grow-Out',   min: 0.99,  max: 3.0   },
+    { stage: 'Harvest Ready', min: 3.0, max: Infinity },
+  ],
+};
+const FCR_TARGET = { Tilapia: [1.2, 1.4], Catfish: [1.5, 1.7] };
+const TEMP_BAND = { Tilapia: [78, 86], Catfish: [75, 82] };
+const PURGE_HOURS = 48;
+const RESTAURANTS = ['CKAY - Unit 1','CKAY - Unit 2','CKAY - Unit 3','CKAY - Unit 4','CKAY - Unit 5','CKAY - Unit 6','CKAY - Unit 7'];
+const RUNS = ['Tuesday Run', 'Friday Run'];
+const COOLERS = ['Cooler A', 'Cooler B'];
+
+const SEED_TANKS = [
+  { id: 'T-Fingerling-1', species: 'Tilapia', cohortId: 'TIL-2026-W33', fishCount: 564, avgWt: 0.05, feedSinceSample: 12, lastSampleAt: iso(-6) },
+  { id: 'T-Fingerling-2', species: 'Tilapia', cohortId: 'TIL-2026-W27', fishCount: 564, avgWt: 0.11, feedSinceSample: 18, lastSampleAt: iso(-8) },
+  { id: 'T-Juvenile-1',   species: 'Tilapia', cohortId: 'TIL-2026-W21', fishCount: 564, avgWt: 0.30, feedSinceSample: 34, lastSampleAt: iso(-5) },
+  { id: 'T-Juvenile-2',   species: 'Tilapia', cohortId: 'TIL-2026-W15', fishCount: 564, avgWt: 0.55, feedSinceSample: 41, lastSampleAt: iso(-9) },
+  { id: 'T-GrowOut-1',    species: 'Tilapia', cohortId: 'TIL-2026-W09', fishCount: 362, avgWt: 1.10, feedSinceSample: 58, lastSampleAt: iso(-4) },
+  { id: 'T-GrowOut-2',    species: 'Tilapia', cohortId: 'TIL-2026-W06', fishCount: 362, avgWt: 1.60, feedSinceSample: 63, lastSampleAt: iso(-11) },
+  { id: 'T-GrowOut-3',    species: 'Tilapia', cohortId: 'TIL-2026-W03', fishCount: 362, avgWt: 2.00, feedSinceSample: 20, lastSampleAt: iso(-2) },
+  { id: 'C-Fingerling-1', species: 'Catfish', cohortId: 'CAT-2026-W28', fishCount: 656, avgWt: 0.08, feedSinceSample: 15, lastSampleAt: iso(-7) },
+  { id: 'C-Raceway-1',    species: 'Catfish', cohortId: 'CAT-2026-W16', fishCount: 328, avgWt: 0.40, feedSinceSample: 29, lastSampleAt: iso(-6) },
+  { id: 'C-Raceway-2',    species: 'Catfish', cohortId: 'CAT-2026-W09', fishCount: 328, avgWt: 0.99, feedSinceSample: 37, lastSampleAt: iso(-13) },
+  { id: 'C-GrowOut-1',    species: 'Catfish', cohortId: 'CAT-2025-W43', fishCount: 574, avgWt: 2.10, feedSinceSample: 71, lastSampleAt: iso(-3) },
+  { id: 'C-GrowOut-2',    species: 'Catfish', cohortId: 'CAT-2025-W26', fishCount: 574, avgWt: 3.00, feedSinceSample: 0,  lastSampleAt: iso(-1) },
+];
+
+function iso(daysOffset){
+  const d = new Date();
+  d.setDate(d.getDate() + daysOffset);
+  return d.toISOString();
+}
+
+// ---------------------------------------------------------------------
+// STATE
+// ---------------------------------------------------------------------
+let STATE = null;
+let VIEW = { role: 'worker', screen: 'home', flow: null };
+let SAVE_TIMER = null;
+
+function defaultState(){
+  const tanks = SEED_TANKS.map(t => {
+    const biomass = round2(t.fishCount * t.avgWt);
+    return Object.assign({}, t, {
+      stage: computeStage(t.species, t.avgWt),
+      biomass,
+      biomassAtLastSample: biomass,
+      lastCheckAt: null,
+      lastCheckLevel: null,
+      lastCheckReasons: [],
+      purging: false,
+      purgeStartAt: null,
+      purgeReadyAt: null,
+      closed: false,
+    });
+  });
+  return { tanks, totes: [], deliveries: [], activity: [], toteSeq: 1 };
+}
+
+async function loadState(){
+  try {
+    const res = await window.storage.get('state', true);
+    if (res && res.value) {
+      STATE = JSON.parse(res.value);
+      // migrate: ensure new tanks/fields present if seed changes over time
+      return;
+    }
+  } catch(e) { /* not found */ }
+  STATE = defaultState();
+  await persist();
+}
+
+async function persist(){
+  try {
+    await window.storage.set('state', JSON.stringify(STATE), true);
+  } catch(e) {
+    console.error('Storage save failed', e);
+  }
+}
+
+function scheduleSave(){
+  persist();
+}
+
+// ---------------------------------------------------------------------
+// DOMAIN LOGIC
+// ---------------------------------------------------------------------
+function round2(n){ return Math.round(n * 100) / 100; }
+
+function computeStage(species, avgWt){
+  const bands = STAGE_BANDS[species];
+  for (const b of bands) {
+    if (avgWt >= b.min && avgWt < b.max) return b.stage;
+  }
+  return bands[bands.length - 1].stage;
+}
+
+function waterAlert(species, DO, temp, TAN, nitrite){
+  const reasons = [];
+  let level = 'ok';
+  if (DO < 4.0) { reasons.push('DO below 4.0 mg/L — start auxiliary oxygen'); level = 'red'; }
+  const band = TEMP_BAND[species];
+  if (temp < band[0] || temp > band[1]) { reasons.push(`Temp outside ${band[0]}–${band[1]}°F band`); if (level !== 'red') level = 'amber'; }
+  if (TAN > 0.25) { reasons.push('TAN above 0.25 ppm'); level = 'red'; }
+  if (nitrite > 0.25) { reasons.push('Nitrite above 0.25 ppm'); level = 'red'; }
+  return { level, reasons };
+}
+
+function fcrStatus(species, fcr){
+  const [lo, hi] = FCR_TARGET[species];
+  if (fcr < lo) return 'amber';
+  if (fcr > hi) return 'red';
+  return 'ok';
+}
+
+function daysSince(iso){
+  if (!iso) return Infinity;
+  return (Date.now() - new Date(iso).getTime()) / 86400000;
+}
+
+function hoursSince(iso){
+  if (!iso) return Infinity;
+  return (Date.now() - new Date(iso).getTime()) / 3600000;
+}
+
+function isToday(iso){
+  if (!iso) return false;
+  const d = new Date(iso), n = new Date();
+  return d.getFullYear()===n.getFullYear() && d.getMonth()===n.getMonth() && d.getDate()===n.getDate();
+}
+
+function logActivity(type, refId, summary, level){
+  STATE.activity.unshift({ id: 'A' + Date.now() + Math.floor(Math.random()*1000), ts: new Date().toISOString(), type, refId, summary, level: level || 'ok' });
+  if (STATE.activity.length > 300) STATE.activity.length = 300;
+}
+
+function openTanks(){ return STATE.tanks.filter(t => !t.closed); }
+function findTank(id){ return STATE.tanks.find(t => t.id === id); }
+function findTote(id){ return STATE.totes.find(t => t.id === id); }
+
+function nextToteId(species){
+  const d = new Date();
+  const wk = String(Math.ceil((((d - new Date(d.getFullYear(),0,1)) / 86400000) + new Date(d.getFullYear(),0,1).getDay()+1) / 7)).padStart(2,'0');
+  const id = `TOTE-${d.getFullYear()}-W${wk}-${String(STATE.toteSeq).padStart(3,'0')}`;
+  STATE.toteSeq += 1;
+  return id;
+}
+
+// ---------------------------------------------------------------------
+// RENDER HELPERS
+// ---------------------------------------------------------------------
+const body = () => document.getElementById('fo-body');
+const headerSub = () => document.getElementById('fo-header-sub');
+
+function esc(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+function setRole(role){
+  VIEW.role = role;
+  VIEW.screen = 'home';
+  VIEW.flow = null;
+  document.getElementById('fo-role-worker').classList.toggle('active', role==='worker');
+  document.getElementById('fo-role-manager').classList.toggle('active', role==='manager');
+  render();
+}
+
+function goHome(){ VIEW.screen = 'home'; VIEW.flow = null; render(); }
+
+function render(){
+  headerSub().textContent = VIEW.role === 'worker' ? "Today's floor work" : 'Facility overview';
+  if (VIEW.screen === 'home') {
+    body().innerHTML = VIEW.role === 'worker' ? renderWorkerHome() : renderManagerHome();
+    bindHomeEvents();
+  } else if (VIEW.screen === 'flow') {
+    body().innerHTML = renderFlow();
+    bindFlowEvents();
+  }
+}
+
+// ---------------------------------------------------------------------
+// WORKER HOME
+// ---------------------------------------------------------------------
+const ACTIONS = [
+  { key: 'check',   num: 1, verb: 'CHECK',   desc: 'Water + fish' },
+  { key: 'feed',    num: 2, verb: 'FEED',    desc: 'Log feed given' },
+  { key: 'grow',    num: 3, verb: 'GROW',    desc: 'Sample & weigh' },
+  { key: 'move',    num: 4, verb: 'MOVE',    desc: 'Transfer tanks' },
+  { key: 'purge',   num: 5, verb: 'PURGE',   desc: 'Start purge' },
+  { key: 'harvest', num: 6, verb: 'HARVEST', desc: 'Process & tote' },
+  { key: 'store',   num: 7, verb: 'STORE',   desc: 'Cooler intake' },
+  { key: 'deliver', num: 8, verb: 'DELIVER', desc: 'Load & drop off' },
+];
+
+function tileMeta(key){
+  const tanks = openTanks();
+  if (key === 'check') {
+    const done = tanks.filter(t => isToday(t.lastCheckAt)).length;
+    const flagged = tanks.filter(t => isToday(t.lastCheckAt) && t.lastCheckLevel !== 'ok').length;
+    return { meta: `${done}/${tanks.length} tanks today`, badge: flagged ? 'red' : null };
+  }
+  if (key === 'feed') {
+    const done = STATE.activity.filter(a => (a.type==='feed'||a.type==='check') && isToday(a.ts)).length;
+    return { meta: `${done} logged today`, badge: null };
+  }
+  if (key === 'grow') {
+    const due = tanks.filter(t => daysSince(t.lastSampleAt) >= 14).length;
+    return { meta: `${due} due for sampling`, badge: due ? 'amber' : null };
+  }
+  if (key === 'move') {
+    const done = STATE.activity.filter(a => a.type==='move' && isToday(a.ts)).length;
+    return { meta: `${done} transfers today`, badge: null };
+  }
+  if (key === 'purge') {
+    const ready = tanks.filter(t => t.stage === 'Harvest Ready' && !t.purging).length;
+    return { meta: `${ready} ready to purge`, badge: ready ? 'amber' : null };
+  }
+  if (key === 'harvest') {
+    const ready = tanks.filter(t => t.purging && hoursSince(t.purgeStartAt) >= PURGE_HOURS).length;
+    return { meta: `${ready} harvest ready`, badge: ready ? 'amber' : null };
+  }
+  if (key === 'store') {
+    const pending = STATE.totes.filter(t => t.status === 'Harvested').length;
+    return { meta: `${pending} awaiting cooler`, badge: pending ? 'amber' : null };
+  }
+  if (key === 'deliver') {
+    const pending = STATE.totes.filter(t => t.status === 'In Cooler' || t.status === 'Loaded').length;
+    return { meta: `${pending} ready to move`, badge: null };
+  }
+  return { meta: '', badge: null };
+}
+
+function renderWorkerHome(){
+  let html = `<div class="fo-section-label">Today's work</div><div class="fo-grid">`;
+  for (const a of ACTIONS) {
+    const m = tileMeta(a.key);
+    html += `
+      <button class="fo-tile" data-action="${a.key}">
+        ${m.badge ? `<span class="fo-badge ${m.badge}"></span>` : ''}
+        <span class="fo-tile-num">${a.num}</span>
+        <span class="fo-tile-verb">${a.verb}</span>
+        <span class="fo-tile-meta">${m.meta}</span>
+      </button>`;
+  }
+  html += `</div>`;
+  return html;
+}
+
+function bindHomeEvents(){
+  document.querySelectorAll('.fo-tile[data-action]').forEach(el => {
+    el.addEventListener('click', () => openFlow(el.getAttribute('data-action')));
+  });
+  document.querySelectorAll('[data-goto]').forEach(el => {
+    el.addEventListener('click', () => { VIEW.screen = el.getAttribute('data-goto'); render(); });
+  });
+}
+
+// ---------------------------------------------------------------------
+// FLOW ENGINE (per-action single screen: SCAN -> DO -> RECORD)
+// ---------------------------------------------------------------------
+const FLOW_META = {
+  check:   { title: 'Check', doText: 'Inspect the tank. Check dissolved oxygen, temperature, pH, ammonia (TAN), nitrite, and mortalities since the last check.' },
+  feed:    { title: 'Feed',  doText: 'Give the scheduled feed for this tank.' },
+  grow:    { title: 'Grow — Sample',  doText: 'Net a sample of fish from the tank, count them, and weigh the sample.' },
+  move:    { title: 'Move',  doText: 'Net or pump fish from the source tank into the destination tank.' },
+  purge:   { title: 'Purge', doText: `Move all fish into the purge tank. No feed for ${PURGE_HOURS} hours before harvest.` },
+  harvest: { title: 'Harvest', doText: 'Process the harvest-ready fish and weigh the total yield.' },
+  store:   { title: 'Store', doText: 'Place the tote in cold storage and confirm the cooler location and temperature.' },
+  deliver: { title: 'Deliver', doText: 'Load the tote, run the delivery, and confirm the restaurant received it.' },
+};
+
+function openFlow(key){
+  VIEW.screen = 'flow';
+  VIEW.flow = { key, scanId: null, search: '', result: null, restaurant: RESTAURANTS[0], run: RUNS[0], cooler: COOLERS[0] };
+  render();
+}
+
+function scanCandidates(key){
+  const tanks = openTanks();
+  if (key === 'check' || key === 'feed') return tanks;
+  if (key === 'grow') return tanks;
+  if (key === 'move') return tanks.filter(t => !t.purging);
+  if (key === 'purge') return tanks.filter(t => t.stage === 'Harvest Ready' && !t.purging);
+  if (key === 'harvest') return tanks.filter(t => t.purging && hoursSince(t.purgeStartAt) >= PURGE_HOURS);
+  if (key === 'store') return STATE.totes.filter(t => t.status === 'Harvested');
+  if (key === 'deliver') return STATE.totes.filter(t => t.status === 'In Cooler' || t.status === 'Loaded');
+  return [];
+}
+
+function scanLabel(key){
+  return (key === 'store' || key === 'deliver') ? 'Scan tote' : 'Scan tank';
+}
+
+function renderScanItem(key, item){
+  const search = (VIEW.flow.search || '').toLowerCase();
+  const isTank = !!item.species !== undefined && item.hasOwnProperty && item.hasOwnProperty('fishCount');
+  let idField = item.id;
+  let detail = '', statusPill = '';
+  if (item.hasOwnProperty('fishCount')) {
+    // tank
+    detail = `${item.species} · ${item.stage} · ${item.fishCount} fish · ${item.biomass} lb`;
+    if (key === 'check' && isToday(item.lastCheckAt)) {
+      statusPill = `<span class="fo-pill ${item.lastCheckLevel==='ok'?'ok':item.lastCheckLevel}">Checked</span>`;
+    } else if (key === 'purge') {
+      statusPill = `<span class="fo-pill amber">Ready</span>`;
+    } else if (key === 'harvest') {
+      statusPill = `<span class="fo-pill amber">Purged</span>`;
+    }
+  } else {
+    // tote
+    detail = `${item.species} · ${item.totalLbs} lb · ${item.status}`;
+    statusPill = `<span class="fo-pill neutral">${item.status}</span>`;
+  }
+  if (search && !idField.toLowerCase().includes(search) && !(item.cohortId||'').toLowerCase().includes(search)) return '';
+  const sel = VIEW.flow.scanId === idField ? 'selected' : '';
+  return `
+    <button class="fo-scan-item ${sel}" data-scan="${esc(idField)}">
+      <span>
+        <div class="fo-scan-id mono">${esc(idField)}</div>
+        <div class="fo-scan-detail">${esc(detail)}</div>
+      </span>
+      ${statusPill}
+    </button>`;
+}
+
+function renderFlow(){
+  const key = VIEW.flow.key;
+  const meta = FLOW_META[key];
+  if (VIEW.flow.result) return renderFlowResult();
+
+  const candidates = scanCandidates(key);
+  const scanItemsHtml = candidates.map(c => renderScanItem(key, c)).join('') ||
+    `<div class="fo-empty">Nothing here right now.</div>`;
+
+  let recordHtml = '';
+  const scanned = VIEW.flow.scanId ? (key==='store'||key==='deliver' ? findTote(VIEW.flow.scanId) : findTank(VIEW.flow.scanId)) : null;
+
+  if (VIEW.flow.scanId && scanned) {
+    recordHtml = renderRecordSection(key, scanned);
+  }
+
+  return `
+    <div class="fo-flow-header">
+      <button class="fo-back" data-goto="home">‹</button>
+      <div class="fo-flow-title">${meta.title}</div>
+    </div>
+
+    <div class="fo-step">
+      <div class="fo-step-label"><span class="fo-step-num">1</span><span class="fo-step-name">${scanLabel(key)}</span></div>
+      <input class="fo-scan-search" placeholder="Search ID or cohort…" id="fo-search" value="${esc(VIEW.flow.search||'')}" />
+      <div class="fo-scan-list">${scanItemsHtml}</div>
+    </div>
+
+    ${VIEW.flow.scanId && scanned ? `
+    <div class="fo-step">
+      <div class="fo-step-label"><span class="fo-step-num">2</span><span class="fo-step-name">Do</span></div>
+      <div class="fo-step-hint">${meta.doText}</div>
+    </div>
+
+    <div class="fo-step">
+      <div class="fo-step-label"><span class="fo-step-num">3</span><span class="fo-step-name">Record</span></div>
+      ${recordHtml}
+    </div>
+    ` : ''}
+  `;
+}
+
+function renderRecordSection(key, item){
+  if (key === 'check') {
+    return `
+      <div class="fo-field-row">
+        <div class="fo-field"><label>DO (mg/L)</label><input type="number" step="0.1" id="f-do" placeholder="e.g. 5.5"></div>
+        <div class="fo-field"><label>Temp (°F)</label><input type="number" step="0.1" id="f-temp" placeholder="e.g. 81"></div>
+      </div>
+      <div class="fo-field-row">
+        <div class="fo-field"><label>pH</label><input type="number" step="0.1" id="f-ph" placeholder="e.g. 7.1"></div>
+        <div class="fo-field"><label>TAN (ppm)</label><input type="number" step="0.01" id="f-tan" placeholder="0"></div>
+      </div>
+      <div class="fo-field-row">
+        <div class="fo-field"><label>Nitrite (ppm)</label><input type="number" step="0.01" id="f-nitrite" placeholder="0"></div>
+        <div class="fo-field"><label>Mortalities</label><input type="number" step="1" id="f-mort" placeholder="0"></div>
+      </div>
+      <div class="fo-field"><label>Feed given (lbs)</label><input type="number" step="0.1" id="f-feed" placeholder="0"></div>
+      <button class="fo-submit" id="fo-submit">Submit check</button>
+    `;
+  }
+  if (key === 'feed') {
+    return `
+      <div class="fo-field"><label>Feed given (lbs)</label><input type="number" step="0.1" id="f-feed" placeholder="e.g. 24"></div>
+      <button class="fo-submit" id="fo-submit">Submit feed</button>
+    `;
+  }
+  if (key === 'grow') {
+    return `
+      <div class="fo-field-row">
+        <div class="fo-field"><label>Sample size (fish)</label><input type="number" step="1" id="f-size" placeholder="e.g. 25"></div>
+        <div class="fo-field"><label>Sample total wt (lbs)</label><input type="number" step="0.1" id="f-wt" placeholder="e.g. 42.5"></div>
+      </div>
+      <div class="fo-step-hint" style="margin-top:-4px;margin-bottom:12px;">Target FCR band: ${FCR_TARGET[item.species][0]}–${FCR_TARGET[item.species][1]} for ${item.species} · Feed logged since last sample: ${item.feedSinceSample} lbs</div>
+      <button class="fo-submit" id="fo-submit">Submit sample</button>
+    `;
+  }
+  if (key === 'move') {
+    const others = openTanks().filter(t => t.id !== item.id);
+    const opts = others.map(t => `<option value="${esc(t.id)}">${esc(t.id)} — ${t.species} ${t.stage}</option>`).join('');
+    return `
+      <div class="fo-field">
+        <label>Destination tank</label>
+        <select id="f-dest">
+          <option value="">Select destination…</option>
+          ${opts}
+          <option value="__new__">+ New tank ID</option>
+        </select>
+      </div>
+      <div class="fo-field" id="f-newid-wrap" style="display:none;"><label>New tank ID</label><input id="f-newid" placeholder="e.g. T-GrowOut-4"></div>
+      <div class="fo-field"><label>Quantity (max ${item.fishCount})</label><input type="number" step="1" id="f-qty" placeholder="e.g. 100"></div>
+      <button class="fo-submit" id="fo-submit">Submit move</button>
+    `;
+  }
+  if (key === 'purge') {
+    return `
+      <div class="fo-step-hint" style="margin-top:-4px;margin-bottom:12px;">This tank is Harvest Ready. Confirming starts a ${PURGE_HOURS}-hour purge — no feed until it's done.</div>
+      <button class="fo-submit" id="fo-submit">Confirm purge start</button>
+    `;
+  }
+  if (key === 'harvest') {
+    return `
+      <div class="fo-field-row">
+        <div class="fo-field"><label>Fish count</label><input type="number" step="1" id="f-count" value="${item.fishCount}"></div>
+        <div class="fo-field"><label>Total weight (lbs)</label><input type="number" step="0.1" id="f-wt" placeholder="e.g. ${round2(item.fishCount*item.avgWt)}"></div>
+      </div>
+      <div class="fo-step-hint" style="margin-top:-4px;margin-bottom:12px;">A tote ID will be generated on submit.</div>
+      <button class="fo-submit" id="fo-submit">Submit harvest</button>
+    `;
+  }
+  if (key === 'store') {
+    const opts = COOLERS.map(c => `<option value="${c}">${c}</option>`).join('');
+    return `
+      <div class="fo-field-row">
+        <div class="fo-field"><label>Cooler location</label><select id="f-cooler">${opts}</select></div>
+        <div class="fo-field"><label>Temp (°F)</label><input type="number" step="0.1" id="f-ctemp" placeholder="e.g. 34"></div>
+      </div>
+      <button class="fo-submit" id="fo-submit">Submit storage</button>
+    `;
+  }
+  if (key === 'deliver') {
+    const status = item.status;
+    let nextLabel = status === 'In Cooler' ? 'Load truck' : status === 'Loaded' ? 'Mark delivered' : 'Confirm receipt';
+    const showSelectors = status === 'In Cooler';
+    let selectorsHtml = '';
+    if (showSelectors) {
+      selectorsHtml = `
+        <div class="fo-field-row">
+          <div class="fo-field"><label>Restaurant unit</label><select id="f-restaurant">${RESTAURANTS.map(r=>`<option value="${esc(r)}">${esc(r)}</option>`).join('')}</select></div>
+          <div class="fo-field"><label>Dispatch run</label><select id="f-run">${RUNS.map(r=>`<option value="${esc(r)}">${esc(r)}</option>`).join('')}</select></div>
+        </div>`;
+    }
+    return `
+      <div class="fo-pill neutral" style="margin-bottom:10px;">Current status: ${status}</div>
+      ${selectorsHtml}
+      <button class="fo-submit" id="fo-submit">${nextLabel}</button>
+    `;
+  }
+  return '';
+}
+
+function renderFlowResult(){
+  const r = VIEW.flow.result;
+  const meta = FLOW_META[VIEW.flow.key];
+  return `
+    <div class="fo-flow-header">
+      <button class="fo-back" data-goto="home">‹</button>
+      <div class="fo-flow-title">${meta.title}</div>
+    </div>
+    <div class="fo-result">
+      <div class="fo-result-icon">${r.icon}</div>
+      <div class="fo-result-title">${esc(r.title)}</div>
+      <div class="fo-result-detail">${r.detail}</div>
+      <button class="fo-submit" style="width:auto;padding:13px 26px;" data-goto="home">Done</button>
+    </div>
+  `;
+}
+
+function bindFlowEvents(){
+  document.querySelectorAll('[data-goto]').forEach(el => {
+    el.addEventListener('click', () => { VIEW.screen = el.getAttribute('data-goto'); VIEW.flow = null; render(); });
+  });
+  const search = document.getElementById('fo-search');
+  if (search) {
+    search.addEventListener('input', (e) => { VIEW.flow.search = e.target.value; render(); setTimeout(()=>{ const s=document.getElementById('fo-search'); if(s){ s.focus(); s.setSelectionRange(s.value.length,s.value.length);} },0); });
+  }
+  document.querySelectorAll('[data-scan]').forEach(el => {
+    el.addEventListener('click', () => { VIEW.flow.scanId = el.getAttribute('data-scan'); render(); });
+  });
+  const destSel = document.getElementById('f-dest');
+  if (destSel) {
+    destSel.addEventListener('change', (e) => {
+      document.getElementById('f-newid-wrap').style.display = e.target.value === '__new__' ? 'block' : 'none';
+    });
+  }
+  const submit = document.getElementById('fo-submit');
+  if (submit) submit.addEventListener('click', handleSubmit);
+}
+
+// ---------------------------------------------------------------------
+// SUBMIT HANDLERS
+// ---------------------------------------------------------------------
+function val(id){ const el = document.getElementById(id); return el ? el.value : ''; }
+function numVal(id, fallback){ const v = parseFloat(val(id)); return isNaN(v) ? (fallback||0) : v; }
+
+function handleSubmit(){
+  const key = VIEW.flow.key;
+  const tank = findTank(VIEW.flow.scanId);
+  const tote = findTote(VIEW.flow.scanId);
+
+  if (key === 'check') {
+    const DO = numVal('f-do'), temp = numVal('f-temp'), ph = numVal('f-ph'), tan = numVal('f-tan'), nitrite = numVal('f-nitrite'), mort = numVal('f-mort'), feed = numVal('f-feed');
+    const alert = waterAlert(tank.species, DO, temp, tan, nitrite);
+    tank.lastCheckAt = new Date().toISOString();
+    tank.lastCheckLevel = alert.level;
+    tank.lastCheckReasons = alert.reasons;
+    tank.fishCount = Math.max(0, tank.fishCount - mort);
+    tank.biomass = round2(tank.fishCount * tank.avgWt);
+    if (feed > 0) tank.feedSinceSample = round2(tank.feedSinceSample + feed);
+    logActivity('check', tank.id, `${tank.id} checked — DO ${DO}, ${temp}°F${mort?`, ${mort} mortalities`:''}`, alert.level);
+    scheduleSave();
+    VIEW.flow.result = alert.level === 'ok'
+      ? { icon: '✓', title: 'Logged — tank normal', detail: `${tank.id} readings are within range.` }
+      : { icon: '⚠', title: `Logged — ${alert.level === 'red' ? 'action needed' : 'watch this tank'}`, detail: `<span class="warn">${alert.reasons.join('<br>')}</span>` };
+    render();
+    return;
+  }
+
+  if (key === 'feed') {
+    const feed = numVal('f-feed');
+    tank.feedSinceSample = round2(tank.feedSinceSample + feed);
+    logActivity('feed', tank.id, `${tank.id} fed ${feed} lbs`, 'ok');
+    scheduleSave();
+    VIEW.flow.result = { icon: '✓', title: 'Feed recorded', detail: `${feed} lbs logged for ${tank.id}.` };
+    render();
+    return;
+  }
+
+  if (key === 'grow') {
+    const size = numVal('f-size'), wt = numVal('f-wt');
+    if (size <= 0 || wt <= 0) return;
+    const avgWt = round2(wt / size);
+    const newBiomass = round2(avgWt * tank.fishCount);
+    const gain = newBiomass - tank.biomassAtLastSample;
+    const fcr = gain > 0 ? round2(tank.feedSinceSample / gain) : null;
+    const prevStage = tank.stage;
+    tank.avgWt = avgWt;
+    tank.biomass = newBiomass;
+    tank.stage = computeStage(tank.species, avgWt);
+    tank.biomassAtLastSample = newBiomass;
+    tank.feedSinceSample = 0;
+    tank.lastSampleAt = new Date().toISOString();
+    const fcrLevel = fcr === null ? 'ok' : fcrStatus(tank.species, fcr);
+    const stageChanged = prevStage !== tank.stage;
+    logActivity('grow', tank.id, `${tank.id} sampled — avg ${avgWt} lb, FCR ${fcr === null ? 'n/a' : fcr}${stageChanged ? `, now ${tank.stage}` : ''}`, stageChanged ? 'amber' : fcrLevel);
+    scheduleSave();
+    VIEW.flow.result = {
+      icon: stageChanged ? '⚠' : '✓',
+      title: stageChanged ? `Stage updated — now ${tank.stage}` : 'Sample recorded',
+      detail: `Avg weight ${avgWt} lb · Biomass ${newBiomass} lb${fcr !== null ? ` · FCR ${fcr}` : ''}${stageChanged ? '<br><span class="warn">Tank location may need to change.</span>' : ''}`
+    };
+    render();
+    return;
+  }
+
+  if (key === 'move') {
+    let destId = val('f-dest');
+    if (destId === '__new__') destId = val('f-newid').trim();
+    const qty = numVal('f-qty');
+    if (!destId || qty <= 0 || qty > tank.fishCount) return;
+    tank.fishCount -= qty;
+    tank.biomass = round2(tank.fishCount * tank.avgWt);
+    if (tank.fishCount === 0) tank.closed = true;
+    let dest = findTank(destId);
+    if (dest) {
+      const totalFish = dest.fishCount + qty;
+      dest.avgWt = round2(((dest.avgWt * dest.fishCount) + (tank.avgWt * qty)) / totalFish);
+      dest.fishCount = totalFish;
+      dest.biomass = round2(dest.fishCount * dest.avgWt);
+      dest.stage = computeStage(dest.species, dest.avgWt);
+    } else {
+      dest = {
+        id: destId, species: tank.species, cohortId: tank.cohortId, fishCount: qty, avgWt: tank.avgWt,
+        feedSinceSample: 0, lastSampleAt: tank.lastSampleAt, stage: computeStage(tank.species, tank.avgWt),
+        biomass: round2(qty * tank.avgWt), biomassAtLastSample: round2(qty * tank.avgWt),
+        lastCheckAt: null, lastCheckLevel: null, lastCheckReasons: [], purging: false, purgeStartAt: null, purgeReadyAt: null, closed: false,
+      };
+      STATE.tanks.push(dest);
+    }
+    logActivity('move', tank.id, `${qty} fish moved from ${tank.id} to ${destId}`, 'ok');
+    scheduleSave();
+    VIEW.flow.result = { icon: '✓', title: 'Move recorded', detail: `${qty} fish moved to ${destId}.` };
+    render();
+    return;
+  }
+
+  if (key === 'purge') {
+    tank.purging = true;
+    tank.purgeStartAt = new Date().toISOString();
+    logActivity('purge', tank.id, `${tank.id} purge started`, 'amber');
+    scheduleSave();
+    VIEW.flow.result = { icon: '✓', title: 'Purge started', detail: `${tank.id} will be harvest-ready in ${PURGE_HOURS} hours.` };
+    render();
+    return;
+  }
+
+  if (key === 'harvest') {
+    const count = numVal('f-count', tank.fishCount);
+    const wt = numVal('f-wt');
+    if (wt <= 0) return;
+    const id = nextToteId(tank.species);
+    STATE.totes.push({ id, species: tank.species, cohortId: tank.cohortId, fishCount: count, totalLbs: round2(wt), status: 'Harvested', createdAt: new Date().toISOString() });
+    tank.fishCount = Math.max(0, tank.fishCount - count);
+    tank.biomass = round2(tank.fishCount * tank.avgWt);
+    if (tank.fishCount === 0) { tank.closed = true; tank.purging = false; }
+    logActivity('harvest', tank.id, `${tank.id} harvested — tote ${id}, ${wt} lbs`, 'ok');
+    scheduleSave();
+    VIEW.flow.result = { icon: '✓', title: 'Harvest recorded', detail: `Tote <b>${id}</b> created — ${wt} lbs, ${count} fish.` };
+    render();
+    return;
+  }
+
+  if (key === 'store') {
+    const cooler = val('f-cooler'), temp = numVal('f-ctemp');
+    tote.status = 'In Cooler';
+    tote.coolerLoc = cooler;
+    tote.coolerTemp = temp;
+    tote.storedAt = new Date().toISOString();
+    const outOfRange = temp < 32 || temp > 36;
+    logActivity('store', tote.id, `${tote.id} stored in ${cooler} at ${temp}°F`, outOfRange ? 'amber' : 'ok');
+    scheduleSave();
+    VIEW.flow.result = outOfRange
+      ? { icon: '⚠', title: 'Stored — temp out of range', detail: `<span class="warn">${temp}°F is outside 32–36°F target.</span>` }
+      : { icon: '✓', title: 'Storage recorded', detail: `${tote.id} in ${cooler} at ${temp}°F.` };
+    render();
+    return;
+  }
+
+  if (key === 'deliver') {
+    if (tote.status === 'In Cooler') {
+      tote.restaurant = val('f-restaurant');
+      tote.run = val('f-run');
+      tote.status = 'Loaded';
+      logActivity('deliver', tote.id, `${tote.id} loaded for ${tote.restaurant} (${tote.run})`, 'ok');
+      VIEW.flow.result = { icon: '✓', title: 'Loaded', detail: `${tote.id} loaded for ${tote.restaurant}.` };
+    } else if (tote.status === 'Loaded') {
+      tote.status = 'Delivered';
+      tote.deliveredAt = new Date().toISOString();
+      logActivity('deliver', tote.id, `${tote.id} delivered to ${tote.restaurant}`, 'ok');
+      VIEW.flow.result = { icon: '✓', title: 'Delivered', detail: `${tote.id} delivered to ${tote.restaurant}. Awaiting chef confirmation.` };
+    } else {
+      tote.status = 'Received';
+      tote.receivedAt = new Date().toISOString();
+      logActivity('deliver', tote.id, `${tote.id} receipt confirmed by ${tote.restaurant}`, 'ok');
+      VIEW.flow.result = { icon: '✓', title: 'Receipt confirmed', detail: `${tote.id} — done.` };
+    }
+    scheduleSave();
+    render();
+    return;
+  }
+}
+
+// ---------------------------------------------------------------------
+// MANAGER HOME
+// ---------------------------------------------------------------------
+function renderManagerHome(){
+  const tanks = openTanks();
+  const today = new Date().toLocaleDateString(undefined, { weekday: 'long', month: 'short', day: 'numeric' });
+
+  const checksToday = tanks.filter(t => isToday(t.lastCheckAt)).length;
+  const feedEvents = STATE.activity.filter(a => (a.type==='feed'||a.type==='check') && isToday(a.ts)).length;
+  const moves = STATE.activity.filter(a => a.type==='move' && isToday(a.ts)).length;
+  const samples = STATE.activity.filter(a => a.type==='grow' && isToday(a.ts)).length;
+  const inCooler = STATE.totes.filter(t => t.status === 'In Cooler').length;
+  const loaded = STATE.totes.filter(t => t.status === 'Loaded').length;
+  const delivered = STATE.totes.filter(t => t.status === 'Delivered' && isToday(t.deliveredAt)).length;
+
+  const exceptions = [];
+  tanks.forEach(t => {
+    if (isToday(t.lastCheckAt) && t.lastCheckLevel !== 'ok') {
+      exceptions.push({ level: t.lastCheckLevel, title: `${t.id} — water alert`, detail: t.lastCheckReasons.join('; ') });
+    } else if (!isToday(t.lastCheckAt)) {
+      exceptions.push({ level: 'amber', title: `${t.id} — no check logged today`, detail: `${t.species} · ${t.stage}` });
+    }
+  });
+  tanks.forEach(t => {
+    if (daysSince(t.lastSampleAt) >= 14) {
+      exceptions.push({ level: 'amber', title: `${t.id} — sampling overdue`, detail: `Last sampled ${Math.floor(daysSince(t.lastSampleAt))} days ago` });
+    }
+  });
+  tanks.forEach(t => {
+    if (t.stage === 'Harvest Ready' && !t.purging) {
+      exceptions.push({ level: 'amber', title: `${t.id} — ready to purge`, detail: `${t.fishCount} fish at ${t.avgWt} lb avg` });
+    }
+    if (t.purging && hoursSince(t.purgeStartAt) >= PURGE_HOURS) {
+      exceptions.push({ level: 'amber', title: `${t.id} — harvest ready`, detail: `Purge complete, ${t.fishCount} fish waiting` });
+    }
+  });
+  // sort red first
+  exceptions.sort((a,b) => (a.level==='red'?0:1) - (b.level==='red'?0:1));
+
+  const checkRows = [
+    { icon: checksToday === tanks.length ? '✓' : '⚠', text: 'Water checks', count: `${checksToday}/${tanks.length} tanks` },
+    { icon: '✓', text: 'Feeding', count: `${feedEvents} logged` },
+    { icon: '✓', text: 'Transfers', count: `${moves} today` },
+    { icon: samples > 0 ? '✓' : '—', text: 'Sampling', count: `${samples} today` },
+  ];
+
+  let html = `<div class="fo-mgr-date">TODAY — ${today}</div>`;
+
+  html += `<div class="fo-section-label">Status</div><div class="fo-step" style="margin-top:0;">`;
+  checkRows.forEach(r => {
+    html += `<div class="fo-check-row"><span class="fo-check-icon">${r.icon}</span><span class="fo-check-text">${r.text} <span class="fo-count">${r.count}</span></span></div>`;
+  });
+  html += `</div>`;
+
+  html += `<div class="fo-section-label">Exceptions${exceptions.length ? ` (${exceptions.length})` : ''}</div>`;
+  if (exceptions.length === 0) {
+    html += `<div class="fo-empty">Nothing needs attention. 🎣</div>`;
+  } else {
+    exceptions.forEach(e => {
+      html += `<div class="fo-exception-card ${e.level}"><div class="fo-exception-title">${esc(e.title)}</div><div class="fo-exception-detail">${esc(e.detail)}</div></div>`;
+    });
+  }
+
+  html += `<div class="fo-section-label">Cold chain</div><div class="fo-step" style="margin-top:0;">`;
+  html += `<div class="fo-check-row"><span class="fo-check-icon">✓</span><span class="fo-check-text">In cooler <span class="fo-count">${inCooler} totes</span></span></div>`;
+  html += `<div class="fo-check-row"><span class="fo-check-icon">${loaded ? '⚠' : '✓'}</span><span class="fo-check-text">Loaded, in transit <span class="fo-count">${loaded} totes</span></span></div>`;
+  html += `<div class="fo-check-row"><span class="fo-check-icon">✓</span><span class="fo-check-text">Delivered today <span class="fo-count">${delivered} totes</span></span></div>`;
+  html += `</div>`;
+
+  html += `<div class="fo-section-label">All tanks</div>`;
+  html += `<table class="fo-tank-table"><thead><tr><th>Tank</th><th>Stage</th><th>Fish</th><th>Biomass</th><th>Check</th></tr></thead><tbody>`;
+  tanks.forEach(t => {
+    const pill = !isToday(t.lastCheckAt) ? `<span class="fo-pill amber">Due</span>` : `<span class="fo-pill ${t.lastCheckLevel}">${t.lastCheckLevel==='ok'?'OK':t.lastCheckLevel}</span>`;
+    html += `<tr><td class="mono">${esc(t.id)}</td><td>${esc(t.stage)}</td><td>${t.fishCount}</td><td>${t.biomass} lb</td><td>${pill}</td></tr>`;
+  });
+  html += `</tbody></table>`;
+
+  return html;
+}
+
+// ---------------------------------------------------------------------
+// INIT
+// ---------------------------------------------------------------------
+async function init(){
+  await loadState();
+  document.getElementById('fo-role-worker').addEventListener('click', () => setRole('worker'));
+  document.getElementById('fo-role-manager').addEventListener('click', () => setRole('manager'));
+  render();
+}
+init();
+
+})();
+</script>
