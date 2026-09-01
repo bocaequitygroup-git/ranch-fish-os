@@ -204,6 +204,7 @@ const PURGE_HOURS = 48;
 const RESTAURANTS = ['CKAY - Unit 1','CKAY - Unit 2','CKAY - Unit 3','CKAY - Unit 4','CKAY - Unit 5','CKAY - Unit 6','CKAY - Unit 7'];
 const RUNS = ['Tuesday Run', 'Friday Run'];
 const COOLERS = ['Cooler A', 'Cooler B'];
+const FEED_TYPES = ['Starter Crumble (45% protein)', 'Grower Pellet (35% protein)', 'Finisher Pellet (28% protein)', 'Medicated Feed', 'Other'];
 const LOGIN_PIN = '1234';
 const ROLES = [
   { key: 'worker',  label: 'Ranch Worker',  desc: 'Daily floor work — check, feed, move, harvest' },
@@ -605,9 +606,9 @@ function renderRecordSection(key, item){
       <div class="fo-field-row"><div class="fo-field"><label>DO (mg/L)</label><input type="number" step="0.1" id="f-do" placeholder="e.g. 5.5"></div><div class="fo-field"><label>Temp (°F)</label><input type="number" step="0.1" id="f-temp" placeholder="e.g. 81"></div></div>
       <div class="fo-field-row"><div class="fo-field"><label>pH</label><input type="number" step="0.1" id="f-ph" placeholder="e.g. 7.1"></div><div class="fo-field"><label>TAN (ppm)</label><input type="number" step="0.01" id="f-tan" placeholder="0"></div></div>
       <div class="fo-field-row"><div class="fo-field"><label>Nitrite (ppm)</label><input type="number" step="0.01" id="f-nitrite" placeholder="0"></div><div class="fo-field"><label>Mortalities</label><input type="number" step="1" id="f-mort" placeholder="0"></div></div>
-      <div class="fo-field"><label>Feed given (lbs)</label><input type="number" step="0.1" id="f-feed" placeholder="0"></div>
+      <div class="fo-field-row"><div class="fo-field"><label>Feed type</label><select id="f-feedtype">${FEED_TYPES.map(f=>`<option value="${esc(f)}">${esc(f)}</option>`).join('')}</select></div><div class="fo-field"><label>Feed given (lbs)</label><input type="number" step="0.1" id="f-feed" placeholder="0"></div></div>
       <button class="fo-submit" id="fo-submit">Submit check</button>`;
-  if (key === 'feed') return `<div class="fo-field"><label>Feed given (lbs)</label><input type="number" step="0.1" id="f-feed" placeholder="e.g. 24"></div><button class="fo-submit" id="fo-submit">Submit feed</button>`;
+  if (key === 'feed') return `<div class="fo-field"><label>Feed type</label><select id="f-feedtype">${FEED_TYPES.map(f=>`<option value="${esc(f)}">${esc(f)}</option>`).join('')}</select></div><div class="fo-field"><label>Feed given (lbs)</label><input type="number" step="0.1" id="f-feed" placeholder="e.g. 24"></div><button class="fo-submit" id="fo-submit">Submit feed</button>`;
   if (key === 'grow') return `
       <div class="fo-field-row"><div class="fo-field"><label>Sample size (fish)</label><input type="number" step="1" id="f-size" placeholder="e.g. 25"></div><div class="fo-field"><label>Sample total wt (lbs)</label><input type="number" step="0.1" id="f-wt" placeholder="e.g. 42.5"></div></div>
       <div class="fo-step-hint" style="margin-top:-4px;margin-bottom:12px;">Target FCR band: ${FCR_TARGET[item.species][0]}–${FCR_TARGET[item.species][1]} for ${item.species} · Feed logged since last sample: ${item.feedSinceSample} lbs</div>
@@ -663,20 +664,21 @@ function handleSubmit(){
   const tote = findTote(VIEW.flow.scanId);
 
   if (key === 'check') {
-    const DO=numVal('f-do'), temp=numVal('f-temp'), tan=numVal('f-tan'), nitrite=numVal('f-nitrite'), mort=numVal('f-mort'), feed=numVal('f-feed');
+    const DO=numVal('f-do'), temp=numVal('f-temp'), tan=numVal('f-tan'), nitrite=numVal('f-nitrite'), mort=numVal('f-mort'), feed=numVal('f-feed'), feedType=val('f-feedtype');
     const alert = waterAlert(tank.species, DO, temp, tan, nitrite);
     tank.lastCheckAt = new Date().toISOString(); tank.lastCheckLevel = alert.level; tank.lastCheckReasons = alert.reasons;
     tank.fishCount = Math.max(0, tank.fishCount - mort); tank.biomass = round2(tank.fishCount * tank.avgWt);
-    if (feed > 0) tank.feedSinceSample = round2(tank.feedSinceSample + feed);
-    logActivity('check', tank.id, `${tank.id} checked — DO ${DO}, ${temp}°F${mort?`, ${mort} mortalities`:''}`, alert.level);
+    if (feed > 0) { tank.feedSinceSample = round2(tank.feedSinceSample + feed); tank.lastFeedType = feedType; }
+    logActivity('check', tank.id, `${tank.id} checked — DO ${DO}, ${temp}°F${mort?`, ${mort} mortalities`:''}${feed>0?`, fed ${feed} lbs ${feedType}`:''}`, alert.level);
     persist();
     VIEW.flow.result = alert.level === 'ok' ? { icon:'✓', title:'Logged — tank normal', detail:`${tank.id} readings are within range.` } : { icon:'⚠', title:`Logged — ${alert.level==='red'?'action needed':'watch this tank'}`, detail:`<span class="warn">${alert.reasons.join('<br>')}</span>` };
     render(); return;
   }
   if (key === 'feed') {
-    const feed = numVal('f-feed'); tank.feedSinceSample = round2(tank.feedSinceSample + feed);
-    logActivity('feed', tank.id, `${tank.id} fed ${feed} lbs`, 'ok'); persist();
-    VIEW.flow.result = { icon:'✓', title:'Feed recorded', detail:`${feed} lbs logged for ${tank.id}.` }; render(); return;
+    const feed = numVal('f-feed'); const feedType = val('f-feedtype');
+    tank.feedSinceSample = round2(tank.feedSinceSample + feed); tank.lastFeedType = feedType;
+    logActivity('feed', tank.id, `${tank.id} fed ${feed} lbs ${feedType}`, 'ok'); persist();
+    VIEW.flow.result = { icon:'✓', title:'Feed recorded', detail:`${feed} lbs of ${feedType} logged for ${tank.id}.` }; render(); return;
   }
   if (key === 'grow') {
     const size=numVal('f-size'), wt=numVal('f-wt'); if (size<=0||wt<=0) return;
@@ -798,26 +800,67 @@ function bindActivityEvents(){
 // SETTINGS (founder only) — Google Sheet sync
 // ---------------------------------------------------------------------
 const APPS_SCRIPT_CODE = `function doGet(e) {
-  var sheet = SpreadsheetApp.getActiveSpreadsheet()
-    .getSheetByName('FISHOS_DATA') || createSheet_();
-  var value = sheet.getRange('A1').getValue();
+  var value = getDataSheet_().getRange('A1').getValue();
   return ContentService.createTextOutput(JSON.stringify({ value: value }))
     .setMimeType(ContentService.MimeType.JSON);
 }
 
 function doPost(e) {
-  var sheet = SpreadsheetApp.getActiveSpreadsheet()
-    .getSheetByName('FISHOS_DATA') || createSheet_();
   var body = JSON.parse(e.postData.contents);
-  sheet.getRange('A1').setValue(body.value);
+  getDataSheet_().getRange('A1').setValue(body.value);
+  var state = JSON.parse(body.value);
+  writeTanksTab_(state);
+  writeTotesTab_(state);
+  writeActivityTab_(state);
   return ContentService.createTextOutput('ok');
 }
 
-function createSheet_() {
+// Raw JSON round-trip — this is what the app reads back on load/refresh.
+function getDataSheet_() {
   var ss = SpreadsheetApp.getActiveSpreadsheet();
-  var sheet = ss.insertSheet('FISHOS_DATA');
-  sheet.getRange('A1').setValue('{}');
+  var sheet = ss.getSheetByName('FISHOS_DATA');
+  if (!sheet) { sheet = ss.insertSheet('FISHOS_DATA'); sheet.getRange('A1').setValue('{}'); }
   return sheet;
+}
+
+// Human-readable mirror tabs — safe to open and read, don't hand-edit them.
+function writeTanksTab_(state) {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var sheet = ss.getSheetByName('Tanks') || ss.insertSheet('Tanks');
+  sheet.clear();
+  var headers = ['Tank ID','Species','Cohort','Stage','Fish Count','Avg Wt (lb)','Biomass (lb)','Feed Since Sample (lb)','Last Feed Type','Last Check','Check Status','Last Sample','Purging','Closed'];
+  var rows = state.tanks.map(function(t) {
+    return [t.id, t.species, t.cohortId, t.stage, t.fishCount, t.avgWt, t.biomass, t.feedSinceSample, t.lastFeedType || '', t.lastCheckAt || '', t.lastCheckLevel || '', t.lastSampleAt || '', t.purging ? 'Yes' : 'No', t.closed ? 'Yes' : 'No'];
+  });
+  sheet.getRange(1, 1, 1, headers.length).setValues([headers]);
+  if (rows.length) sheet.getRange(2, 1, rows.length, headers.length).setValues(rows);
+  sheet.setFrozenRows(1);
+}
+
+function writeTotesTab_(state) {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var sheet = ss.getSheetByName('Totes') || ss.insertSheet('Totes');
+  sheet.clear();
+  var headers = ['Tote ID','Species','Cohort','Fish Count','Total Wt (lb)','Status','Cooler','Cooler Temp','Restaurant','Run','Created','Delivered'];
+  var rows = state.totes.map(function(t) {
+    return [t.id, t.species, t.cohortId, t.fishCount, t.totalLbs, t.status, t.coolerLoc || '', t.coolerTemp || '', t.restaurant || '', t.run || '', t.createdAt || '', t.deliveredAt || ''];
+  });
+  sheet.getRange(1, 1, 1, headers.length).setValues([headers]);
+  if (rows.length) sheet.getRange(2, 1, rows.length, headers.length).setValues(rows);
+  sheet.setFrozenRows(1);
+}
+
+function writeActivityTab_(state) {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var sheet = ss.getSheetByName('Activity Log') || ss.insertSheet('Activity Log');
+  sheet.clear();
+  var headers = ['Timestamp','Person','Role','Type','Reference','Summary','Level'];
+  var rows = state.activity.map(function(a) {
+    return [a.ts, a.actor ? a.actor.name : '', a.actor ? a.actor.role : '', a.type, a.refId, a.summary, a.level];
+  });
+  sheet.getRange(1, 1, 1, headers.length).setValues([headers]);
+  if (rows.length) sheet.getRange(2, 1, rows.length, headers.length).setValues(rows);
+  sheet.setFrozenRows(1);
 }`;
 
 function renderSettings(){
@@ -833,9 +876,14 @@ function renderSettings(){
     </div>
     <div class="fo-settings-block">
       <div class="fo-settings-label">One-time setup (5 min)</div>
-      <div class="fo-settings-desc">1. Open (or create) the Google Sheet you want FISH OS backed by.<br>2. Extensions → Apps Script.<br>3. Delete the placeholder code, paste the script below.<br>4. Deploy → New deployment → type "Web app" → Execute as "Me" → Who has access "Anyone" → Deploy.<br>5. Copy the Web App URL and paste it above.</div>
+      <div class="fo-settings-desc">1. Open (or create) a <b>Google Sheet</b> — File → Save as Google Sheets first if you're starting from an uploaded .xlsx.<br>2. Extensions → Apps Script.<br>3. Select all the placeholder code and delete it, paste the script below in its place.<br>4. Deploy → New deployment → type "Web app" → Execute as "Me" → Who has access "Anyone" → Deploy.<br>5. Copy the Web App URL and paste it above.</div>
+      <div class="fo-settings-desc">Already deployed and just updating the script? Use <b>Deploy → Manage deployments → ✏️ edit → Version: New version → Deploy</b> — this keeps your existing URL working, no need to reconnect.</div>
       <div class="fo-code-block" id="fo-apps-script">${esc(APPS_SCRIPT_CODE)}</div>
       <button class="fo-submit ghost" id="fo-copy-script">Copy script</button>
+    </div>
+    <div class="fo-settings-block">
+      <div class="fo-settings-label">Where the data actually shows up</div>
+      <div class="fo-settings-desc">This script writes three readable tabs into your Sheet — <b>Tanks</b>, <b>Totes</b>, and <b>Activity Log</b> — rebuilt fresh on every sync, plus a hidden <b>FISHOS_DATA</b> tab the app uses to reload its own state. Open the Tanks or Activity Log tab any time to see what's changed.<br><br>Note: this only writes to whichever Google Sheet you ran Apps Script from. It does <b>not</b> write back to the original .xlsx file you uploaded to this chat — that file is static. If you want FISH OS backed by that exact workbook, upload it to Google Drive, open it (it'll convert to a native Google Sheet), and run the Apps Script setup from there.</div>
     </div>
     <div class="fo-settings-block">
       <div class="fo-settings-label">Without a sheet connected</div>
